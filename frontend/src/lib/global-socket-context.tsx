@@ -1,14 +1,17 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
-
-const SocketContext = createContext<Socket | null>(null)
+import { SocketContext } from "./socket-context";
 
 export function SocketProvider({ children }: { children: ReactNode }) {
     const [socket, setSocket] = useState<Socket | null>(null)
     useEffect(() => {
         const newSocket = io('http://localhost:8080')
         setSocket(newSocket)
+        console.log("Socket connected in provider")
 
+        newSocket.on("connect", () => {
+            console.log("Socket connected event")
+        })
 
         return () => {
             newSocket.disconnect()
@@ -22,10 +25,3 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     )
 }
 
-export const useSocket = () => {
-    const context = useContext(SocketContext);
-    if (context === undefined) {
-        throw new Error('useSocket must be used within a SocketProvider');
-    }
-    return context;
-}
