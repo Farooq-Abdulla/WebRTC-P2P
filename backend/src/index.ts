@@ -17,10 +17,16 @@ io.on('connection', (socket) => {
     console.log('Identified receiver', receiverSocket.id);
   });
   socket.on('create-offer', (offer: RTCSessionDescription) => {
-    if (receiverSocket) receiverSocket?.emit('create-offer', offer);
+    if (socket === senderSocket && receiverSocket)
+      receiverSocket.emit('create-offer', offer);
+    else if (socket === receiverSocket && senderSocket)
+      senderSocket.emit('create-offer', offer);
   });
   socket.on('create-answer', (offer: RTCSessionDescription) => {
-    if (senderSocket) senderSocket?.emit('create-answer', offer);
+    if (socket === senderSocket && receiverSocket)
+      receiverSocket.emit('create-answer', offer);
+    else if (socket === receiverSocket && senderSocket)
+      senderSocket.emit('create-answer', offer);
   });
   socket.on('forward-ice-candidate', (candidate: RTCIceCandidate) => {
     if (socket === senderSocket && receiverSocket)

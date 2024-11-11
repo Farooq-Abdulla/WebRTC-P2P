@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import { Socket } from "socket.io-client"
 import { useSocket } from "../lib/useSocket"
 
 
@@ -13,11 +14,18 @@ export default function Receiver() {
             console.log("Receiver connected to WSS")
             socket.emit("identify-as-receiver")
         })
+
+        InitiateConnection(socket)
+
+    }, [socket])
+
+    async function InitiateConnection(socket: Socket) {
         if (!socket) {
             alert("Socket not found")
             return
         }
         const pc = new RTCPeerConnection()
+
         mediaStreamRef.current = new MediaStream()
         if (videoRef.current) {
             videoRef.current.srcObject = mediaStreamRef.current
@@ -30,6 +38,12 @@ export default function Receiver() {
             socket.emit("create-answer", answer)
             console.log("Sent this answer to sender and set it as LocalDescription of receiver", answer)
         })
+        pc.onnegotiationneeded = async () => {
+            const offer = await pc.createOffer()
+            await pc.setLocalDescription(offer)
+            socket.emit("create-offer", offer)
+
+        }
         pc.onicecandidate = (event) => {
             if (event.candidate) {
                 socket.emit("forward-ice-candidate", event.candidate)
@@ -44,20 +58,16 @@ export default function Receiver() {
                 console.error("Video element reference not found")
             }
         }
-        socket.on("forward-ice-candidate", (candidate: RTCIceCandidate) => {
+        socket.on("forward-ice-candidate", async (candidate: RTCIceCandidate) => {
             pc.addIceCandidate(candidate)
             console.log("Added ice candidate in receiver", candidate)
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true })
+            stream.getTracks().forEach(track => {
+                pc.addTrack(track)
+            })
         })
-        return () => {
-            // if (videoRef.current) {
-            //     videoRef.current.srcObject = null
-            // }
-            pc.close()
-            socket.off("create-offer")
-            socket.off("forward-ice-candidate")
-        }
 
-    }, [socket])
+    }
 
     return (
         <div className="w-full h-full flex flex-col items-center justify-center">
